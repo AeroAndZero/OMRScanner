@@ -21,7 +21,7 @@ for k in range(5):
     Y = Yplaces[k]
     for i in range(10):
         X = firstX
-        for j in range(4):
+        for j in range(5):
             if numpy.all(omr[Y,X] <= [150,150,150]):
                 cv2.circle(omr,(X,Y),1,(50,50,250),3)
                 print("Question : " + str(question)+", Answer Ticked : " + str(j+1))
