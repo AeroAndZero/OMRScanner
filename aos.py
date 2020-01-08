@@ -1,32 +1,7 @@
 import cv2
 import numpy as np
 
-def findCorners(omr0,resize = []):
-    minOMRColor = 200
-    omr0_gray = cv2.cvtColor(omr0,cv2.COLOR_BGR2GRAY)
-    ret, omr0_threshold = cv2.threshold(omr0_gray,minOMRColor,255,0)
-    omr0_canny = cv2.Canny(omr0_threshold,50,20)
-
-    contours, hierarchy = cv2.findContours(omr0_threshold,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
-
-    max = 0
-    for i in range(0,len(contours)):
-        area = cv2.contourArea(contours[i])
-        if area == (omr0.shape[0]-1)*(omr0.shape[1]-1):
-            continue
-
-        temp_peri = cv2.arcLength(contours[i],True)
-        temp_approx = cv2.approxPolyDP(contours[i],0.02*temp_peri,True)
-
-        if area > max and len(temp_approx) == 4:
-            max = area
-            maxContour = contours[i]
-            maxContourIndex = i
-
-    peri = cv2.arcLength(maxContour,True)
-    approx = cv2.approxPolyDP(maxContour,0.02*peri,True)
-
-    def mapp(h):
+def mapp(h):
         h = h.reshape((4,2))
         hnew = np.zeros((4,2),dtype = np.float32)
 
@@ -40,7 +15,40 @@ def findCorners(omr0,resize = []):
 
         return hnew
 
+def findCorners(omr0,resize = []):
+    copy = np.copy(omr0)
+    blank = np.zeros((omr0.shape[0],omr0.shape[1],3), np.uint8)
+    
+    omr0_blur = cv2.GaussianBlur(omr0,(17,17),0)
+
+    omr0_canny = cv2.Canny(omr0_blur,70,20)
+    cv2.imshow("Canny",omr0_canny)
+
+    contours, hierarchy = cv2.findContours(omr0_canny,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
+
+    cv2.drawContours(omr0, contours, -1, (0,255,0), 3)
+    max = 0
+    maxContour = contours[0]
+    perimulti = 0.01
+    for i in range(0,len(contours)):
+        area = cv2.contourArea(contours[i])
+        if area == (omr0.shape[0]-1)*(omr0.shape[1]-1):
+            continue
+
+        temp_peri = cv2.arcLength(contours[i],True)
+        temp_approx = cv2.approxPolyDP(contours[i],perimulti*temp_peri,True)
+
+        if area > max and len(temp_approx) == 4:
+            max = area
+            maxContour = contours[i]
+            maxContourIndex = i
+
+    peri = cv2.arcLength(maxContour,True)
+    approx = cv2.approxPolyDP(maxContour,perimulti*peri,True)
+
     corners = mapp(approx)
+    for corner in corners:
+        cv2.circle(omr0,(corner[0],corner[1]),2,(0,0,255),7)
 
     wscale = resize[0]
     hscale = resize[1]
@@ -51,8 +59,9 @@ def findCorners(omr0,resize = []):
             [0, hscale - 1]], dtype = "float32")
 
     M = cv2.getPerspectiveTransform(corners,dst)
-    wrapped = cv2.warpPerspective(omr0, M, (wscale, hscale))
+    wrapped = cv2.warpPerspective(copy, M, (wscale, hscale))
     return wrapped
+
 
 def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10,totalOptions = 4,showDots = False):
     i = 0
@@ -92,14 +101,16 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
 
 def main():
     #orig = cv2.imread("images/RealLifeOMR2.jpg")
-    omr = cv2.imread("images/croppedOMR7-ticked.jpg")#cv2.resize(orig,(720,1280))
-    cv2.imshow("AOSv2 1",omr)
-    
+    omr = cv2.imread("images/img_2.jpg")#cv2.resize(orig,(720,1280))
+    omr = cv2.resize(omr,(500,500))#(int(omr.shape[1]/2),int(omr.shape[0]/2)))
     #Keep the resize amount large for better and accurate scanning
-    found_omr = findCorners(omr,[5000,5000])
-    answers = scanOmr(found_omr,[278,503],[27,24],[32,24],[5000,5000],20,4,True)
-
-    cv2.imshow("AOSv2 2",cv2.resize(found_omr,(500,500)))
+    try:
+        found_omr = findCorners(omr,[5000,5000])
+        #answers = scanOmr(found_omr,[278,503],[27,24],[32,24],[5000,5000],20,4,True)
+        cv2.imshow("Detected",cv2.resize(found_omr,(500,500)))
+    except:
+        print("Something went wrong")
+    cv2.imshow("AOSv2 1",omr)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
