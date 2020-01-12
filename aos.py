@@ -22,7 +22,7 @@ def findCorners(omr0,resize = []):
     omr0_blur = cv2.GaussianBlur(omr0,(17,17),0)
 
     omr0_canny = cv2.Canny(omr0_blur,70,20)
-    cv2.imshow("Canny",omr0_canny)
+    #cv2.imshow("Canny",omr0_canny)
 
     contours, hierarchy = cv2.findContours(omr0_canny,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
 
@@ -89,8 +89,7 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
             if np.all(image[y,x] < InkThreshold):
                 #print("Question : "+str(int(y/dy))+", Answered Ticked : " + str(int(x/dx)+1))
                 answers.append(int(x/dx)+1)
-                i += 1
-                answerticked = 1
+                answerticked += 1
                 if showDots:
                     cv2.circle(image,(x,y),int(0.1*dx),red,int(0.05*dx))
                 continue
@@ -101,12 +100,12 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
 
 def main():
     #orig = cv2.imread("images/RealLifeOMR2.jpg")
-    omr = cv2.imread("images/img_2.jpg")#cv2.resize(orig,(720,1280))
+    omr = cv2.imread("images/img_3.jpg")#cv2.resize(orig,(720,1280))
     omr = cv2.resize(omr,(500,500))#(int(omr.shape[1]/2),int(omr.shape[0]/2)))
     #Keep the resize amount large for better and accurate scanning
     try:
         found_omr = findCorners(omr,[5000,5000])
-        #answers = scanOmr(found_omr,[278,503],[27,24],[32,24],[5000,5000],20,4,True)
+        answers = scanOmr(found_omr,[278,503],[27,24],[32,24],[5000,5000],20,4,True)
         cv2.imshow("Detected",cv2.resize(found_omr,(500,500)))
     except:
         print("Something went wrong")
