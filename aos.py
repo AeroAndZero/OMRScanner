@@ -15,19 +15,23 @@ def mapp(h):
 
         return hnew
 
-def findCorners(omr0,resize = []):
+def findCorners(omr0):
+    h = omr0.shape[0]
+    w = omr0.shape[1]
+    xdownscale = float(500)/float(w)
+    ydownscale = float(500)/float(h)
+
     copy = np.copy(omr0)
-    blank = np.zeros((omr0.shape[0],omr0.shape[1],3), np.uint8)
+    omr0 = cv2.resize(omr0,(int(w*xdownscale),int(h*ydownscale)))
     
     omr0_blur = cv2.GaussianBlur(omr0,(17,17),0)
 
     omr0_canny = cv2.Canny(omr0_blur,70,20)
-    #cv2.imshow("Canny",omr0_canny)
 
     contours, hierarchy = cv2.findContours(omr0_canny,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
 
     cv2.drawContours(omr0, contours, -1, (0,255,0), 3)
-    max = 0
+    maxArea = 0
     maxContour = contours[0]
     perimulti = 0.01
     for i in range(0,len(contours)):
@@ -38,8 +42,8 @@ def findCorners(omr0,resize = []):
         temp_peri = cv2.arcLength(contours[i],True)
         temp_approx = cv2.approxPolyDP(contours[i],perimulti*temp_peri,True)
 
-        if area > max and len(temp_approx) == 4:
-            max = area
+        if area > maxArea and len(temp_approx) == 4:
+            maxArea = area
             maxContour = contours[i]
             maxContourIndex = i
 
@@ -48,10 +52,13 @@ def findCorners(omr0,resize = []):
 
     corners = mapp(approx)
     for corner in corners:
-        cv2.circle(omr0,(corner[0],corner[1]),2,(0,0,255),7)
+        corner[0] = int(w*corner[0]/500)
+        corner[1] = int(h*corner[1]/500)
+        cv2.circle(copy,(corner[0],corner[1]),2,(0,0,255),7)
 
-    wscale = resize[0]
-    hscale = resize[1]
+    wscale = abs(max(corners[0][0] - corners[1][0],corners[2][0] - corners[3][0]))
+    hscale = abs(max(corners[0][1] - corners[2][1],corners[1][1] - corners[3][1]))
+    
     dst = np.array([
             [0, 0],
             [wscale - 1, 0],
@@ -101,14 +108,14 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
 def main():
     #orig = cv2.imread("images/RealLifeOMR2.jpg")
     omr = cv2.imread("images/img_3.jpg")#cv2.resize(orig,(720,1280))
-    omr = cv2.resize(omr,(500,500))#(int(omr.shape[1]/2),int(omr.shape[0]/2)))
+    #omr = cv2.resize(omr,(500,500))#(int(omr.shape[1]/2),int(omr.shape[0]/2)))
     #Keep the resize amount large for better and accurate scanning
-    try:
-        found_omr = findCorners(omr,[5000,5000])
-        answers = scanOmr(found_omr,[278,503],[27,24],[32,24],[5000,5000],20,4,True)
-        cv2.imshow("Detected",cv2.resize(found_omr,(500,500)))
-    except:
-        print("Something went wrong")
+    #try:
+    found_omr = findCorners(omr)
+    answers = scanOmr(found_omr,[278,503],[27,24],[32,24],[278,503],20,4,True)
+    #cv2.imshow("Detected",cv2.resize(found_omr,(500,500)))
+    #except:
+        #print("Something went wrong")
     cv2.imshow("AOSv2 1",omr)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
