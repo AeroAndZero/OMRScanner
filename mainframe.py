@@ -9,10 +9,10 @@ import shutil
 from PIL import Image, ImageTk
 
 root = tk.Tk()
-direction = [[],[],[]]
-slowDown = 0.01
+direction = []
+zoomFactor = 1.3
 
-'''---------------- Window Customization ----------------'''
+'''--------- Window Customization --------'''
 root.title('AOS v0.1')
 root.geometry("900x500+100+100")
 
@@ -41,11 +41,40 @@ def onLeftDrag(event):
     direction.pop()
     
 def MouseClick(event):
-    direction.insert(0,[event.x,event.y])
+    try:
+        direction.pop()
+    except:
+        pass
+    finally:
+        direction.insert(0,[event.x,event.y])
     event.widget.bind('<B1-Motion>', onLeftDrag)
 
 def MouseEnter(event):
     event.widget.bind("<Button-1>", MouseClick)
+
+def ImgZoomIn(canvas):
+    try:
+        newSize = [int(canvas.sizeX*zoomFactor),int(canvas.sizeY*zoomFactor)]
+        displayImage(canvas.original,canvas,newSize)
+    except:
+        print("Failed to zoom in.")
+
+def ImgZoomOut(canvas):
+    try:
+        newSize = [int(canvas.sizeX/zoomFactor),int(canvas.sizeY/zoomFactor)]
+        displayImage(canvas.original,canvas,newSize)
+    except:
+        print("Failed to zoom Out.")
+
+def bindZooms(canvas):
+    zoomIn = tk.Button(canvas,text="+",width=2,command= lambda: ImgZoomIn(canvas)) #Building Zoom in Button
+    zoomIn.pack(side=tk.TOP,anchor=tk.N+tk.E)
+
+    zoomOut = tk.Button(canvas,text="-",width=2,command = lambda: ImgZoomOut(canvas))     #Builfing Zoom Out Button
+    zoomOut.pack(side=tk.TOP,anchor=tk.N+tk.E)
+
+    #Binding Functionality
+    
 
 '''---------------- Menu bar Commands ----------------'''
 def openfile():
@@ -68,31 +97,30 @@ def openfile():
 
     #Final File Path
     image_path = "temp/"+str(fn)
-    displayImage(image_path)
 
-def displayImage(image_path):
     # Load an color image
     img = cv2.imread(image_path)
-    
-    try :
+    displayImage(img,ogCanvas,[img.shape[1],img.shape[0]])
+    try:
         img_fc = aos.findCorners(img)
-        
-        ogomr_img = cvtImg(img)
-        root.ogomr_img = ogomr_img
-        ogCanvas.create_image(0,0,image=ogomr_img,anchor="nw")
-        ogCanvas.config(scrollregion=(0,0,img.shape[1],img.shape[0]))
-
-        domr_img = cvtImg(img_fc)
-        root.domr_img = domr_img
-        doCanvas.create_image(0,0,image=domr_img,anchor="nw")
-        doCanvas.config(scrollregion=(0,0,img_fc.shape[1],img_fc.shape[0]))
-
-        root.update()
-        print("Open function done!")
-
+        displayImage(img_fc,doCanvas,[img_fc.shape[1],img_fc.shape[0]])
     except:
         tkMessageBox.showerror("Try again","No omr was detected in the image. Please try again with a different image.")
+    
 
+def displayImage(img,canvas,size=[]):   #Displays Image On A Specific Canvas
+    canvas.original = img
+    resize_img = cv2.resize(img,(size[0],size[1]))
+    canvas.sizeX = size[0]
+    canvas.sizeY = size[1]
+    canvas_img = cvtImg(resize_img)
+    canvas.canvas_img = canvas_img
+    canvas.create_image(0,0,image=canvas_img,anchor="nw")
+    canvas.config(scrollregion=(0,0,canvas.sizeX,canvas.sizeY))
+
+    root.update()
+    print("Displayed!")
+        
 
 def deletetemp():
     try:
@@ -101,16 +129,17 @@ def deletetemp():
         print("Couldn't delete directory temp")
     root.quit()
 
-'''---------------------------- Menu bars ----------------------------'''
+'''-------------------- Menu bars --------------------'''
 menubar = tk.Menu(root)
 #file menu
 filemenu = tk.Menu(menubar,tearoff=0)
 filemenu.add_command(label="Open",command=openfile)
+filemenu.add_separator()
 filemenu.add_command(label="Exit",command=deletetemp)
 menubar.add_cascade(label="File",menu=filemenu)
 root.config(menu=menubar)
 
-'''---------VVVVVV------------------- Main GUI -----------------VVVVVV-----------'''
+'''-----------######------------------- Main GUI -----------------######-----------'''
 root.grid_columnconfigure(0, weight=1)
 root.grid_columnconfigure(1, weight=1)
 root.grid_rowconfigure(0, weight=1)
@@ -135,6 +164,7 @@ ogCanvas.pack(expand=1,fill=tk.BOTH)                #Packing Canvas
 doImgFrame = tk.LabelFrame(root,text="Detected OMR")
 doImgFrame.grid(row=0,column=1,sticky=tk.N+tk.S+tk.E+tk.W,padx=5,pady=5)
 
+#Detected Image Canvas Building
 doCanvas = tk.Canvas(doImgFrame,height=200,width=200,scrollregion=(0,0,500,800))    #Canvas For Detected OMR
 doScrollbarY = tk.Scrollbar(doCanvas,orient="vertical")     #Y-Scrollbar
 doScrollbarX = tk.Scrollbar(doCanvas,orient="horizontal")   #X-Scrollbar
@@ -144,6 +174,11 @@ doScrollbarX.config(command=doCanvas.xview)             #Config Command For Scro
 doScrollbarY.pack(side=tk.RIGHT,fill=tk.Y)              #Packing Scroll Y
 doScrollbarX.pack(side=tk.BOTTOM,fill=tk.X)             #Packing Scroll X
 doCanvas.pack(expand=1,fill=tk.BOTH)                    #Packing Canvas
+
+
+#Zoom in and zoom out buttons
+bindZooms(ogCanvas)
+bindZooms(doCanvas)
 
 #--------------- Settings Panel
 settingsFrame = tk.LabelFrame(root,text="Settings")
