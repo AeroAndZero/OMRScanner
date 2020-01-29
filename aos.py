@@ -1,5 +1,11 @@
 import cv2
 import numpy as np
+import circleProcessor
+import random
+red = [10,10,255]
+blue = [255,10,10]
+green = [10,255,10]
+
 
 def mapp(h):
         h = h.reshape((4,2))
@@ -15,7 +21,7 @@ def mapp(h):
 
         return hnew
 
-def findCorners(omr0):
+def findCorners(omr0,cp1=70,cp2=20,bp=17):
     h = omr0.shape[0]
     w = omr0.shape[1]
     xdownscale = float(500)/float(w)
@@ -24,9 +30,9 @@ def findCorners(omr0):
     copy = np.copy(omr0)
     omr0 = cv2.resize(omr0,(int(w*xdownscale),int(h*ydownscale)))
     
-    omr0_blur = cv2.GaussianBlur(omr0,(17,17),0)
+    omr0_blur = cv2.GaussianBlur(omr0,(bp,bp),0)
 
-    omr0_canny = cv2.Canny(omr0_blur,70,20)
+    omr0_canny = cv2.Canny(omr0_blur,cp1,cp2)
 
     contours, hierarchy = cv2.findContours(omr0_canny,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
 
@@ -54,7 +60,8 @@ def findCorners(omr0):
     for corner in corners:
         corner[0] = int(w*corner[0]/500)
         corner[1] = int(h*corner[1]/500)
-        cv2.circle(copy,(corner[0],corner[1]),2,(0,0,255),7)
+        #cv2.circle(copy,(corner[0],corner[1]),2,(0,0,255),7)
+    
 
     wscale = abs(max(corners[0][0] - corners[1][0],corners[2][0] - corners[3][0]))
     hscale = abs(max(corners[0][1] - corners[2][1],corners[1][1] - corners[3][1]))
@@ -70,52 +77,91 @@ def findCorners(omr0):
     return wrapped
 
 
-def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10,totalOptions = 4,showDots = False):
-    i = 0
-    answers = []
+def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10,totalOptions = 4,showDots = False, method=0):
     #some parameters
+    answers = []
     InkThreshold = 100
-    red = [10,10,255]
     actualw = actualSize[0]
     actualh = actualSize[1]
     fx = init[0]
     fy = init[1]
     dx = diff[0]
     dy = diff[1]
-    resizew = resize[0]
-    resizeh = resize[1]
 
-    dx = int((dx*resizew)/actualw)
-    dy = int((dy*resizeh)/actualh)
-    fx = int((fx*resizew)/actualw)
-    fy = int((fy*resizeh)/actualh)
+    if (method == 0):   #----------------- Simple Scanning Algorithm
+        resizew = resize[0]
+        resizeh = resize[1]
 
-    for y in range(fy,fy+(dy*totalMCQs),dy):
-        answerticked = 0
-        for x in range(fx,fx+(dx*totalOptions),dx):
-            if np.all(image[y,x] < InkThreshold):
-                #print("Question : "+str(int(y/dy))+", Answered Ticked : " + str(int(x/dx)+1))
-                answers.append(int(x/dx)+1)
-                answerticked += 1
+        dx = int((dx*resizew)/actualw)
+        dy = int((dy*resizeh)/actualh)
+        fx = int((fx*resizew)/actualw)
+        fy = int((fy*resizeh)/actualh)
+
+        image= cv2.resize(image,(resizew,resizeh))
+
+        for y in range(fy,fy+(dy*totalMCQs),dy):
+            answerticked = 0
+            for x in range(fx,fx+(dx*totalOptions),dx):
+                
                 if showDots:
-                    cv2.circle(image,(x,y),int(0.1*dx),red,int(0.05*dx))
-                continue
-        if answerticked == 0:
-            answers.append(0)
+                    cv2.circle(image,(x,y),int(0.1*dx),red,50)
 
-    return answers
+                if np.all(image[y,x] < InkThreshold):
+                    #print("Question : "+str(int(y/dy))+", Answered Ticked : " + str(int(x/dx)+1))
+                    answers.append(int(x/dx)+1)
+                    answerticked += 1
+                    continue
+                
+            if answerticked == 0:
+                answers.append(0)
+        
+        image = cv2.resize(image,(actualSize[0],actualSize[1]))
+        return image
+
+    elif (method == 1): #----------------- Circle Detection and Dynamic Difference Algorithm
+        image = cv2.resize(image,(actualSize[0],actualSize[1]))
+        fx,fy = circleProcessor.findClosestCircle(image,fx,fy,int(dx/2))
+        PointHistoryX = [fx]
+        PointHistoryY = [fy]
+        
+        try:
+            for i in range(totalMCQs):
+                y = circleProcessor.findClosestCircle(image,PointHistoryX[0],PointHistoryY[0]+dy,int(dy/2))[1]
+                
+                PointHistoryX = [fx]
+                for j in range(totalOptions):
+                    x = circleProcessor.findClosestCircle(image,PointHistoryX[0]+dx,PointHistoryY[0],int(dx/2))[0]
+                    #Scanning Here
+                    xForScan = PointHistoryX[0]
+                    yForScan = PointHistoryY[0]
+
+                    #Debugging
+                    cv2.circle(image,(PointHistoryX[0],PointHistoryY[0]),1,random.choice([red,green,blue]),2)
+                    print("Current Point : " + str(xForScan) + ", " + str(yForScan))
+
+                    #Keeping Data Short
+                    PointHistoryX.insert(0,x)
+                    dx = abs(PointHistoryX[0] - PointHistoryX[1])    #Dynamic Difference
+                    PointHistoryX.pop()
+
+                PointHistoryY.insert(0,y)
+                dy = abs(PointHistoryY[0] - PointHistoryY[1])
+                PointHistoryY.pop()
+             
+        except Exception as e:
+            print(e)
+        
+        return image
+
+    else:
+        print("Invalid Method Provided.")
+        return 0
+
 
 def main():
-    #orig = cv2.imread("images/RealLifeOMR2.jpg")
-    omr = cv2.imread("images/img_3.jpg")#cv2.resize(orig,(720,1280))
-    #omr = cv2.resize(omr,(500,500))#(int(omr.shape[1]/2),int(omr.shape[0]/2)))
-    #Keep the resize amount large for better and accurate scanning
-    #try:
+    omr = cv2.imread("images/img_3.jpg")
     found_omr = findCorners(omr)
     answers = scanOmr(found_omr,[278,503],[27,24],[32,24],[278,503],20,4,True)
-    #cv2.imshow("Detected",cv2.resize(found_omr,(500,500)))
-    #except:
-        #print("Something went wrong")
     cv2.imshow("AOSv2 1",omr)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
