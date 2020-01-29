@@ -8,6 +8,8 @@ import presets
 import numpy as np
 import shutil
 from PIL import Image, ImageTk
+import circleProcessor
+
 direction = []
 zoomFactor = 1.3
 batchCount = 0
@@ -142,6 +144,7 @@ def applySettings(ce1Value,ce2Value,blurValue,showCanny,img):
 
 def getPoint(event):
     global doCanvas
+
     #------------- Setting Up Parameters
     if currentParameterIndex == 0 :
         currentBatch.firstQuestionXY = [int(doCanvas.xview()[0]*doCanvas.original.shape[1] + event.x) - 2,
@@ -165,6 +168,9 @@ def getPoint(event):
     doCanvas.zoomOut.config(state="normal")
     doCanvas.bind("<Button-1>",MouseClick)
 
+    #Changing Mouse Cursor to normal
+    doCanvas.config(cursor="arrow")
+
     #Showing The Pixel They Picked
     showPicks()
 
@@ -180,6 +186,9 @@ def pickPixel(frame,parameterIndex):
     #Disabling zoom-in and zoom-out for precise pixel choosing
     doCanvas.zoomIn.config(state="disable")
     doCanvas.zoomOut.config(state="disable")
+
+    #Changin Mouse Cursor
+    doCanvas.config(cursor="target")
 
     #unbinding all button functionality
     doCanvas.unbind("<Button-1>")
