@@ -108,6 +108,8 @@ def createNewPreset():
 
 def buildNewPresetButton():
     global aRow,aColumn,rootCanvas
+    aRow = 0
+    aColumn = 0
     
     #RowConfigures
     #rootCanvas.grid_columnconfigure(aColumn, weight=1)
@@ -117,7 +119,7 @@ def buildNewPresetButton():
     newPresetFrame.grid(row=aRow,column=aColumn,sticky=tk.N+tk.S+tk.E+tk.W,padx=10,pady=5)
     
     #New Preset Button
-    newPresetButton = tk.Button(newPresetFrame,text="+",command=createNewPreset)
+    newPresetButton = tk.Button(newPresetFrame,text="+",command=createNewPreset,width=15,height=5)
     newPresetButton.pack(fill=tk.BOTH,expand=True)
 
     #Increments
@@ -125,14 +127,37 @@ def buildNewPresetButton():
 
 def usePreset(presetIndex):
     global root
-    print("Preset In Use : " + str(fileContent[presetIndex]))
-    root.destroy()
-    mainframe.presetProcessor(fileContent[presetIndex])
+    methodWindow = tk.Tk()
+    methodWindow.title("Choose Method")
+    methodWindow.geometry("300x100")
+
+    methodWindow.grid_rowconfigure(0,weight=1)
+    methodWindow.grid_rowconfigure(1,weight=1)
+
+    methodWindow.grid_columnconfigure(0,weight=1)
+    methodWindow.grid_columnconfigure(1,weight=1)
+
+    def selectMethod(scanningMethod):
+        print("Preset In Use : " + str(fileContent[presetIndex]))
+        root.destroy()
+        methodWindow.destroy()
+        mainframe.presetProcessor(fileContent[presetIndex],scanningMethod)
+
+    chooseMethodLabel = tk.Label(methodWindow,text="Choose Scanning Method")
+    chooseMethodLabel.grid(row=0,column=0,columnspan=2)
+
+    simpleMethodButton = tk.Button(methodWindow,text="Simple Method",command= lambda : selectMethod(0))
+    simpleMethodButton.grid(row=1,column=0,sticky="nwes",padx=5,pady=5)
+
+    aiMethodButton = tk.Button(methodWindow,text="AI Method (unstable)",command= lambda : selectMethod(1))
+    aiMethodButton.grid(row=1,column=1,sticky="nwes",padx=5,pady=5)
+
+    methodWindow.mainloop()
 
 def buildPresetButton(presetName,presetDescription,presetIndex):
     global aRow,aColumn,rootCanvas
 
-    if (aColumn > 5):
+    if (aColumn >= 5):
         aRow += 1
         aColumn = 0
 
@@ -154,6 +179,7 @@ def buildPresetButton(presetName,presetDescription,presetIndex):
 
 def buildAll():
     global fileContent
+    fileContent = []
     #Reading Saved Presets
     try:
         with open('.presets','a+') as f:
@@ -173,7 +199,7 @@ def main():
     global root,rootCanvas
     root = tk.Tk()
     root.title("Presets - AOS v1.0")
-    root.geometry("850x500+100+100")
+    root.geometry("900x500+100+100")
     root.focus_force()
     
     rootCanvas = tk.Canvas(root)
