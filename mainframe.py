@@ -7,6 +7,7 @@ import os
 import numpy as np
 import ast
 import shutil
+import presets
 from PIL import Image, ImageTk
 
 #Some Global Variables
@@ -14,6 +15,8 @@ direction = []
 zoomFactor = 1.3
 actualSize = []
 batches = []
+titleWithPreset = "AOS v1.0"
+method = 0
 
 '''---------------- Functions ----------------'''
 def filename(fp):
@@ -76,7 +79,7 @@ def openfile():
     dlg = tkFileDialog.Open(filetypes = ftype)
     fp = dlg.show()     #Gives path of the open file
     fn = filename(fp)   #Returns File Name
-    root.title('AOS v0.1 - '+str(fn))
+    root.title(titleWithPreset + " - " + str(fn))
     
     #Creating temp Folder For opencv access
     try:
@@ -95,14 +98,12 @@ def openfile():
     img = cv2.imread(image_path)
     displayImage(img,ogCanvas,[img.shape[1],img.shape[0]])
     try:
-        img_fc = aos.findCorners(img)
+        img_fc = aos.findCorners(img,cp1=presetCE1,cp2=presetCE2,bp=presetBlur)
         displayImage(img_fc,doCanvas,[img_fc.shape[1],img_fc.shape[0]])
-    except:
+        handleScanning(img_fc)
+    except Exception as e:
         tkMessageBox.showerror("Try again","No omr was detected in the image. Please try again with a different image.")
-
-    imgCircle = aos.scanOmr(img_fc)
-    displayImage(imgCircle,doCanvas,[imgCircle.shape[1],imgCircle.shape[0]])
-    
+        print(e)
 
 def displayImage(img,canvas,size=[]):   #Displays Image On A Specific Canvas
     canvas.original = img
@@ -117,12 +118,24 @@ def displayImage(img,canvas,size=[]):   #Displays Image On A Specific Canvas
     root.update()
     print("Displayed!")
         
+def handleScanning(img):
+    global doCanvas
+    scannedImage = img
+    for batch in batches:
+        print("Batch in scan : " + str(batch))
+        print("Fx : " + str(batch[2]))
+        scannedImage = aos.scanOmr(scannedImage,actualSize=actualSize,init=[batch[2],batch[3]],diff=[batch[4],batch[5]],resize=[5000,5000]
+        ,totalMCQs=batch[1],totalOptions=batch[0],showDots=True,method=method)
+    
+    displayImage(scannedImage,doCanvas,[scannedImage.shape[1],scannedImage.shape[0]])
+
 def deletetemp():
+    global root
     try:
         shutil.rmtree(".temp")
     except:
         print("Couldn't delete directory temp")
-    root.quit()
+    root.destroy()
 
 def bindScrollbar(Canvas):
     ScrollbarY = tk.Scrollbar(Canvas,orient="vertical")    #Y-Scrollbar
@@ -135,12 +148,14 @@ def bindScrollbar(Canvas):
 
 def main():
     #global variables
-    global ogImgFrame,doImgFrame,ogCanvas,doCanvas,root
+    global ogImgFrame,doImgFrame,ogCanvas,doCanvas,root,titleWithPreset
 
     root = tk.Tk()
     '''--------- Window Customization --------'''
-    root.title('AOS v0.1')
-    root.geometry("1000x600+100+100")
+    newTitle = "AOS v1.0 - preset : " + titleWithPreset
+    titleWithPreset = newTitle
+    root.title(titleWithPreset)
+    root.geometry("1000x600+50+50")
     root.focus_force()
 
     '''-------------------- Menu bars --------------------'''
@@ -188,7 +203,7 @@ def main():
     testL = tk.Label(settingsFrame,text="Settings & Export Options Will Be Added Here")
     testL.pack()
 
-    #-------------- Button Clicking
+    #-------------- Binding Functionality
     ogCanvas.bind("<Button-1>", MouseClick)
     doCanvas.bind("<Button-1>", MouseClick)
 
@@ -196,8 +211,11 @@ def main():
     root.protocol('WM_DELETE_WINDOW', deletetemp)
     root.mainloop()
 
-def presetProcessor(presetString):
-    global batches,presetName,presetDescription,presetCE1,presetCE2,presetBlur,actualSize
+def presetProcessor(presetString,scanningMethod):
+    global batches,presetName,presetDescription,presetCE1,presetCE2,presetBlur,actualSize,root,titleWithPreset,method
+    method = scanningMethod
+    batches = []
+    print("Method Chosen : " + str(method))
     try:
         presetData = presetString.split("$")
         presetName = presetData[0]
@@ -210,6 +228,10 @@ def presetProcessor(presetString):
         for batchIndex in range(7,7+presetTotalBatches,1):
             batches.append(ast.literal_eval(presetData[batchIndex]))
         print(batches)
+        titleWithPreset = presetName
+        main()
+        presets.main()
+
     except Exception as e:
         tkMessageBox.showerror("Corrupted Preset","The preset you are trying to use is corrupted. Re-make the preset or use another one.")
         print(e)
