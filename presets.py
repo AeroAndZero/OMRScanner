@@ -157,7 +157,7 @@ def usePreset(presetIndex):
     simpleMethodButton = tk.Button(methodWindow,text="Simple Method",command= lambda : selectMethod(0))
     simpleMethodButton.grid(row=1,column=0,sticky="nwes",padx=5,pady=5)
 
-    aiMethodButton = tk.Button(methodWindow,text="AI Method (unstable)",command= lambda : selectMethod(1))
+    aiMethodButton = tk.Button(methodWindow,text="AI Method (very unstable)",command= lambda : selectMethod(1))
     aiMethodButton.grid(row=1,column=1,sticky="nwes",padx=5,pady=5)
 
     methodWindow.mainloop()
