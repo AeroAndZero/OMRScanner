@@ -17,6 +17,8 @@ actualSize = []
 batches = []
 titleWithPreset = "AOS v1.0"
 method = 0
+answerKeyFilepath = 0
+gDetected = 0
 
 '''---------------- Functions ----------------'''
 def filename(fp):
@@ -74,10 +76,13 @@ def bindZooms(canvas):
 
 '''---------------- Menu bar Commands ----------------'''
 def openfile():
+    global resultFrame,gDetected
     #Reading The File
     ftype = [('JPEG','*.jpg'),('PNG','*.png')]
     dlg = tkFileDialog.Open(filetypes = ftype)
     fp = dlg.show()     #Gives path of the open file
+    if fp == '':
+        return
     fn = filename(fp)   #Returns File Name
     root.title(titleWithPreset + " - " + str(fn))
     
@@ -99,11 +104,24 @@ def openfile():
     displayImage(img,ogCanvas,[img.shape[1],img.shape[0]])
     try:
         img_fc = aos.findCorners(img,cp1=presetCE1,cp2=presetCE2,bp=presetBlur)
+        gDetected = img_fc
         displayImage(img_fc,doCanvas,[img_fc.shape[1],img_fc.shape[0]])
         handleScanning(img_fc)
     except Exception as e:
-        tkMessageBox.showerror("Try again","No omr was detected in the image. Please try again with a different image.")
+        tkMessageBox.showerror("Error","No OMR was detected or scanning algorithm didn't work. Try again...")
         print(e)
+
+def openAnswerKey():
+    global answerKeyFilepath,resultFrame
+    ftype = [('TXT','*.txt')]
+    dlg = tkFileDialog.Open(filetypes = ftype)
+    fp = dlg.show()     #Gives path of the open file
+    fn = filename(fp)   #Returns File Name
+    if fp != '':
+        answerKeyFilepath = fp
+        resultFrame.currentAnswerKey.config(text=str(fn))
+        resultFrame.scanButton.config(state="normal")
+        print(fp)
 
 def displayImage(img,canvas,size=[]):   #Displays Image On A Specific Canvas
     canvas.original = img
@@ -119,15 +137,98 @@ def displayImage(img,canvas,size=[]):   #Displays Image On A Specific Canvas
     print("Displayed!")
         
 def handleScanning(img):
-    global doCanvas
+    global doCanvas,resultFrame
+
     scannedImage = img
+    answers = []
+    finalRawResult = []
+    simplifiedResult = []
+    totalQuestions = 0
+    try:
+        inkThreshold = abs(int(resultFrame.inkThreshold.get()))
+    except:
+        tkMessageBox.showerror("Error","Only enter integer value in InkThreshold")
+        inkThreshold = 120
+    
+    # 0 : Total Scanned, 1 : Correct MCQs, 2 : Wrong MCQs, 3 : Total Marks
+    marks = [0,0,0,0]
+
+    #Points for right and wrong
+    pointForCorrect = 1
+    pointForWrong = 0
+
+    #Finding Out Total Questions In The WHOLE omr
+    for batch in batches:
+        totalQuestions += batch[1]
+
+    print(totalQuestions)
+
+    #Loading Answers
+    try:
+        with open(answerKeyFilepath,'a+') as f:
+            for line in f:
+                answers.append(int(line[0]))
+        print("Read Answers And Appended")
+        
+        if len(answers) != totalQuestions:
+            print("File doesn't have answers to every mcq. Appending with 0s")
+            tkMessageBox.showwarning("Warning","Answer key that is attached doesn't have answer to every question.")
+        
+        while(len(answers) < totalQuestions):
+            answers.append(0)
+        
+        safeToScan = True
+    
+    except Exception as e:
+        safeToScan = False
+        print("\nFile Corrupted.")
+        print(str(e) + "\n")
+
+    #Scanning Batches
     for batch in batches:
         print("Batch in scan : " + str(batch))
         print("Fx : " + str(batch[2]))
-        scannedImage = aos.scanOmr(scannedImage,actualSize=actualSize,init=[batch[2],batch[3]],diff=[batch[4],batch[5]],resize=[5000,5000]
-        ,totalMCQs=batch[1],totalOptions=batch[0],showDots=True,method=method)
-    
+        
+        scannedImage, batchResult = aos.scanOmr(scannedImage,actualSize=actualSize,init=[batch[2],batch[3]],diff=[batch[4],batch[5]],resize=[5000,5000]
+        ,totalMCQs=batch[1],totalOptions=batch[0],showDots=True,method=method,InkThreshold = inkThreshold) 
+        
+        finalRawResult.append(batchResult)
+
     displayImage(scannedImage,doCanvas,[scannedImage.shape[1],scannedImage.shape[0]])
+
+    print("final result : " + str(finalRawResult))
+
+    #Simplifying answers into simple array
+    for batchResult in finalRawResult:
+        for option in batchResult:
+            simplifiedResult.append(option)
+
+    print("Simplified result : " + str(simplifiedResult))
+    print("Answers From File : " + str(answers))
+
+    #Result Calculations
+    try:
+        pointForCorrect = abs(float(resultFrame.pointForCorrect.get()))
+        pointForWrong = abs(float(resultFrame.pointForWrong.get()))
+    except:
+        tkMessageBox.showerror("Error","Please Enter only numbers in Point for correct & wrong input fields.")
+
+    if safeToScan:
+        for question in range(len(simplifiedResult)):
+            marks[0] += 1
+            if simplifiedResult[question] == answers[question]:
+                marks[1] += 1
+                marks[3] += pointForCorrect
+            else:
+                marks[2] += 1
+                marks[3] -= pointForWrong
+        
+        resultFrame.totalScannedMCQs.config(text=str(marks[0]))
+        resultFrame.correctMCQs.config(text=str(marks[1]))
+        resultFrame.wrongMCQs.config(text=str(marks[2]))
+        resultFrame.totalMarks.config(text=str(marks[3]) + "/" + str(marks[0] * pointForCorrect))
+        precentage = float(marks[3]) / float(marks[0] * pointForCorrect) * float(100)
+        resultFrame.totalPercentage.config(text=str(precentage) + " %")
 
 def deletetemp():
     global root
@@ -148,7 +249,7 @@ def bindScrollbar(Canvas):
 
 def main():
     #global variables
-    global ogImgFrame,doImgFrame,ogCanvas,doCanvas,root,titleWithPreset
+    global ogImgFrame,doImgFrame,ogCanvas,doCanvas,root,titleWithPreset,resultFrame
 
     root = tk.Tk()
     '''--------- Window Customization --------'''
@@ -191,17 +292,104 @@ def main():
     bindScrollbar(doCanvas)
     doCanvas.pack(expand=1,fill=tk.BOTH)                    #Packing Canvas
 
-
     #Zoom in and zoom out buttons
     bindZooms(ogCanvas)
     bindZooms(doCanvas)
 
     #--------------- Settings Panel
-    settingsFrame = tk.LabelFrame(root,text="Settings")
-    settingsFrame.grid(row=0,column=2,sticky=tk.N+tk.S+tk.E+tk.W,padx=5,pady=5)
+    resultFrame = tk.LabelFrame(root,text="Result")
+    resultFrame.grid(row=0,column=2,sticky=tk.N+tk.S+tk.E+tk.W,padx=5,pady=5)
 
-    testL = tk.Label(settingsFrame,text="Settings & Export Options Will Be Added Here")
-    testL.pack()
+    resultFrame.grid_columnconfigure(0,weight=1)
+    resultFrame.grid_columnconfigure(1,weight=1)
+    resultFrame.grid_columnconfigure(2,weight=1)
+    resultFrame.grid_columnconfigure(3,weight=1)
+
+    #Showing Attached Answer Key
+    answerKeyLabel = tk.Label(resultFrame,text="Answer Key : ")
+    answerKeyLabel.grid(row=0,column=0,sticky="e")
+
+    resultFrame.currentAnswerKey = tk.Label(resultFrame,text="No Answer Key Attached [!]")
+    resultFrame.currentAnswerKey.grid(row=0,column=1,columnspan=3,sticky="w")
+
+    openAnswerKeyButton = tk.Button(resultFrame,text="Open\nAnswer Key",command = openAnswerKey)
+    openAnswerKeyButton.grid(row=1,column=0,columnspan=2,pady=5,padx=5,sticky="nwes")
+
+    resultFrame.scanButton = tk.Button(resultFrame,text="Re-Scan",command = lambda : handleScanning(gDetected))
+    resultFrame.scanButton.config(state="disabled")
+    resultFrame.scanButton.grid(row=1,column=2,columnspan=2,pady=5,padx=5,sticky="nwes")
+
+    #Empty Label for separation
+    emptyLabel = tk.Label(resultFrame,text="").grid(row=2,column=0,columnspan=4)
+    emptyLabel = tk.Label(resultFrame,text="").grid(row=3,column=0,columnspan=4)
+
+    #Taking Input for correct and incorrect mcq points
+    
+        #For Correct
+    point4CorrectLabel = tk.Label(resultFrame,text="Point For Correct Answer :",wraplength=100)
+    point4CorrectLabel.grid(row=4,column=0,columnspan=2,sticky="e",padx=5)
+
+    resultFrame.pointForCorrect = tk.Entry(resultFrame)
+    resultFrame.pointForCorrect.insert(tk.END, 1)
+    resultFrame.pointForCorrect.grid(row=4,column=2,columnspan=2,padx=5,pady=5)
+
+        #For Incorrect
+    point4WrongLabel = tk.Label(resultFrame,text="Point For Wrong Answer : ",wraplength=100)
+    point4WrongLabel.grid(row=5,column=0,columnspan=2,sticky="e",padx=5)
+
+    resultFrame.pointForWrong = tk.Entry(resultFrame)
+    resultFrame.pointForWrong.insert(tk.END, 0)
+    resultFrame.pointForWrong.grid(row=5,column=2,columnspan=2,padx=5,pady=5)
+
+    #Empty Label..... Again
+    emptyLabel = tk.Label(resultFrame,text="").grid(row=6,column=0,columnspan=4)
+
+    #For Showing Total Scanned MCQs
+    totalMCQsScannedLabel = tk.Label(resultFrame,text="Total MCQs\nScanned : ")
+    totalMCQsScannedLabel.grid(row=7,column=0,columnspan=2,sticky="e")
+
+    resultFrame.totalScannedMCQs = tk.Label(resultFrame,text="0")
+    resultFrame.totalScannedMCQs.grid(row=7,column=2,columnspan=2)
+
+    #Showing Correct MCQS
+    correctMCQsLabel = tk.Label(resultFrame,text="Correct MCQs : ")
+    correctMCQsLabel.grid(row=8,column=0,columnspan=2,sticky="e")
+
+    resultFrame.correctMCQs = tk.Label(resultFrame,text="0")
+    resultFrame.correctMCQs.grid(row=8,column=2,columnspan=2)
+
+    #Showing Wrong MCQs
+    wrongMCQsLabel = tk.Label(resultFrame,text="Wrong MCQs : ")
+    wrongMCQsLabel.grid(row=9,column=0,columnspan=2,sticky="e")
+
+    resultFrame.wrongMCQs = tk.Label(resultFrame,text="0")
+    resultFrame.wrongMCQs.grid(row=9,column=2,columnspan=2)
+
+    #Separator
+    separatorLabel = tk.Label(resultFrame,text="----------------------------")
+    separatorLabel.grid(row=10,column=0,columnspan=4)
+
+    #Showing Total Marks
+    totalMarksLabel = tk.Label(resultFrame,text="Total Marks : ")
+    totalMarksLabel.grid(row=11,column=0,columnspan=2,sticky="e")
+
+    resultFrame.totalMarks = tk.Label(resultFrame,text="0")
+    resultFrame.totalMarks.grid(row=11,column=2,columnspan=2)
+
+    #Showing Percentage
+    percentageLabel = tk.Label(resultFrame,text="Percentage : ")
+    percentageLabel.grid(row=12,column=0,columnspan=2,sticky="e")
+
+    resultFrame.totalPercentage = tk.Label(resultFrame,text="0 %")
+    resultFrame.totalPercentage.grid(row=12,column=2,columnspan=2)
+
+    #For InkThreshold
+    inkThresholdlabel = tk.Label(resultFrame,text="Ink Threshold\n(Between 0 to 255) : ")
+    inkThresholdlabel.grid(row=13,column=0,columnspan=2,sticky="e",pady=15)
+
+    resultFrame.inkThreshold = tk.Entry(resultFrame)
+    resultFrame.inkThreshold.insert(tk.END, 120)
+    resultFrame.inkThreshold.grid(row=13,column=2,columnspan=2,sticky="w",pady=15)
 
     #-------------- Binding Functionality
     ogCanvas.bind("<Button-1>", MouseClick)
