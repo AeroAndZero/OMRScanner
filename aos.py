@@ -77,10 +77,11 @@ def findCorners(omr0,cp1=70,cp2=20,bp=17):
     wrapped = cv2.warpPerspective(copy, M, (wscale, hscale))
     return wrapped
 
-def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10,totalOptions = 4,showDots = False, method=0):
+def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10,totalOptions = 4,showDots = False, method=0,InkThreshold = 120):
+    #Debug
+    print(InkThreshold+10)
     #some parameters
     safeToScan = False
-    InkThreshold = 120
     actualw = actualSize[0]
     actualh = actualSize[1]
     fx = init[0]
