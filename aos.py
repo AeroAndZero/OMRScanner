@@ -88,6 +88,7 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
     fy = init[1]
     dx = diff[0]
     dy = diff[1]
+    currentOption = 1
 
     # 0: total scanned, 1: correct MCQs, 2 : wrong mcqs
     optionTicked = []
@@ -106,6 +107,8 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
         for y in range(fy,fy+(dy*totalMCQs),dy):
             
             optionTicked.append(0)
+            currentOption = 1
+            
             for x in range(fx,fx+(dx*totalOptions),dx):
                 
                 if (image[y,x][0] < InkThreshold) and (image[y,x][1] < InkThreshold) and (image[y,x][2] < InkThreshold):
@@ -114,15 +117,17 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
                     #Question Number : int(y/dy)
                     #Option Number : int(x/dx)+1
 
-                    cv2.circle(image,(x,y),15,yellow,50)
+                    cv2.circle(image,(x,y),int(dx*0.1),yellow,int(dx*0.15))
 
                     if optionTicked[len(optionTicked)-1] == 0:
-                        optionTicked[len(optionTicked)-1] += int(x/dx)+1
+                        optionTicked[len(optionTicked)-1] += currentOption
                     else :
                         optionTicked[len(optionTicked)-1] += 69
 
                 else:
-                    cv2.circle(image,(x,y),15,blue,50)
+                    cv2.circle(image,(x,y),int(dx*0.1),blue,int(dx*0.15))
+                
+                currentOption += 1
 
                 
         
