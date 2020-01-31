@@ -295,6 +295,9 @@ def savePresetToFile(presetNameEntry,presetDescriptionEntry,savePresetWindow):
     elif (len(batches) <= 0):
         tkMessageBox.showerror("No Batches","Preset must have atleast 1 batch.")
         savePresetWindow.destroy()
+    elif(len(name) <= 0):
+        tkMessageBox.showerror("No Name","Preset must have a name.")
+        savePresetWindow.destroy()
     else:
         buffer = ""
         buffer += str(name) + "$" + str(description) + "$"  #Saving Name & Description
