@@ -116,6 +116,27 @@ def bindZooms(canvas):
     canvas.zoomOut = tk.Button(canvas,text="-",width=2,command = lambda: ImgZoomOut(canvas))     #Builfing Zoom Out Button
     canvas.zoomOut.pack(side=tk.TOP,anchor=tk.N+tk.E)
 
+def showPreview(event):
+    #Event is a garbage variable. Event is import because of the keybind to Entry widget
+    try:
+        scannedImage = doCanvas.original
+        actualSize = [scannedImage.shape[1],scannedImage.shape[0]]
+        for batch in batches:
+            fx = batch.firstQuestionXY[0]
+            fy = batch.firstQuestionXY[1]
+            dx = batch.secondOptionXY[0] - fx
+            dy = batch.secondQuestionXY[1] - fy
+            totalOptions = abs(int(batch.totalOptionEntry.get()))
+            totalMCQs = abs(int(batch.totalMCQEntry.get()))
+
+            scannedImage, batchResult = aos.scanOmr(scannedImage,actualSize=actualSize,init=[fx,fy],diff=[dx,dy],resize=[5000,5000]
+            ,totalMCQs=totalMCQs,totalOptions=totalOptions,showDots=True,method=0)
+        
+        displayImage(scannedImage,doCanvas,size=actualSize)
+
+    except Exception as e:
+        print(e)
+
 def showPicks():
     try:
         gImageDetectedCopy = np.copy(gImageDetected)
@@ -126,6 +147,8 @@ def showPicks():
         displayImage(gImageDetectedCopy,doCanvas,[gImageDetectedCopy.shape[1],gImageDetectedCopy.shape[0]])
     except Exception as e:
         print(e)
+
+    showPreview(0)
 
 def applySettings(ce1Value,ce2Value,blurValue,showCanny,img):
     if blurValue % 2 == 0:
@@ -235,6 +258,7 @@ def addBatch(canvas):
     totalOptionLabel.grid(row=3,column=0,sticky="e")
 
     batchLabelFrame.totalOptionEntry = tk.Entry(batchLabelFrame)
+    batchLabelFrame.totalOptionEntry.bind('<KeyRelease>', showPreview)
     batchLabelFrame.totalOptionEntry.grid(row=3,column=1,columnspan=2)
 
         #Total MCQ Entry
@@ -242,6 +266,7 @@ def addBatch(canvas):
     totalMCQLabel.grid(row=4,column=0,sticky="e")
 
     batchLabelFrame.totalMCQEntry = tk.Entry(batchLabelFrame)
+    batchLabelFrame.totalMCQEntry.bind('<KeyRelease>', showPreview)
     batchLabelFrame.totalMCQEntry.grid(row=4,column=1,columnspan=2)
 
     #Variable Initialization
@@ -314,8 +339,8 @@ def savePresetToFile(presetNameEntry,presetDescriptionEntry,savePresetWindow):
                 dx = batch.secondOptionXY[0] - fx
                 dy = batch.secondQuestionXY[1] - fy
                 buffer += "["
-                buffer += str(int(batch.totalOptionEntry.get())) + ","  #Total Options
-                buffer += str(int(batch.totalMCQEntry.get())) + ","     #Total MCQS In Single Batch
+                buffer += str(abs(int(batch.totalOptionEntry.get()))) + ","  #Total Options
+                buffer += str(abs(int(batch.totalMCQEntry.get()))) + ","     #Total MCQS In Single Batch
                 buffer += str(fx) + "," + str(fy) + ","                 #First-X and First-Y
                 buffer += str(dx) + "," + str(dy) + "]$"                #X Difference and Y Difference
 
