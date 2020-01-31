@@ -5,7 +5,8 @@ import random
 red = [10,10,255]
 blue = [255,10,10]
 green = [10,255,10]
-
+yellow = [0,255,255]
+answerKeyTextFile = 0
 
 def mapp(h):
         h = h.reshape((4,2))
@@ -76,17 +77,19 @@ def findCorners(omr0,cp1=70,cp2=20,bp=17):
     wrapped = cv2.warpPerspective(copy, M, (wscale, hscale))
     return wrapped
 
-
 def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10,totalOptions = 4,showDots = False, method=0):
     #some parameters
-    answers = []
-    InkThreshold = 100
+    safeToScan = False
+    InkThreshold = 120
     actualw = actualSize[0]
     actualh = actualSize[1]
     fx = init[0]
     fy = init[1]
     dx = diff[0]
     dy = diff[1]
+
+    # 0: total scanned, 1: correct MCQs, 2 : wrong mcqs
+    optionTicked = []
 
     if (method == 0):   #----------------- Simple Scanning Algorithm
         resizew = resize[0]
@@ -100,23 +103,30 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
         image= cv2.resize(image,(resizew,resizeh))
 
         for y in range(fy,fy+(dy*totalMCQs),dy):
-            answerticked = 0
+            
+            optionTicked.append(0)
             for x in range(fx,fx+(dx*totalOptions),dx):
                 
-                if showDots:
-                    cv2.circle(image,(x,y),int(0.1*dx),red,50)
+                if (image[y,x][0] < InkThreshold) and (image[y,x][1] < InkThreshold) and (image[y,x][2] < InkThreshold):
+                    print("Low inkThreshold found")
+                    
+                    #Question Number : int(y/dy)
+                    #Option Number : int(x/dx)+1
 
-                if np.all(image[y,x] < InkThreshold):
-                    #print("Question : "+str(int(y/dy))+", Answered Ticked : " + str(int(x/dx)+1))
-                    answers.append(int(x/dx)+1)
-                    answerticked += 1
-                    continue
+                    cv2.circle(image,(x,y),15,yellow,50)
+
+                    if optionTicked[len(optionTicked)-1] == 0:
+                        optionTicked[len(optionTicked)-1] += int(x/dx)+1
+                    else :
+                        optionTicked[len(optionTicked)-1] += 69
+
+                else:
+                    cv2.circle(image,(x,y),15,blue,50)
+
                 
-            if answerticked == 0:
-                answers.append(0)
         
         image = cv2.resize(image,(actualSize[0],actualSize[1]))
-        return image
+        return image, optionTicked
 
     elif (method == 1): #----------------- Circle Detection and Dynamic Difference Algorithm
         image = cv2.resize(image,(actualSize[0],actualSize[1]))
@@ -125,19 +135,35 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
         PointHistoryY = [fy]
         
         try:
-            for i in range(totalMCQs):
+            for mcq in range(totalMCQs):
                 y = circleProcessor.findClosestCircle(image,PointHistoryX[0],PointHistoryY[0]+dy,int(dy/2))[1]
                 
                 PointHistoryX = [fx]
-                for j in range(totalOptions):
+
+                optionTicked.append(0)
+                
+                for option in range(totalOptions):
                     x = circleProcessor.findClosestCircle(image,PointHistoryX[0]+dx,PointHistoryY[0],int(dx/2))[0]
                     #Scanning Here
                     xForScan = PointHistoryX[0]
                     yForScan = PointHistoryY[0]
 
-                    #Debugging
-                    cv2.circle(image,(PointHistoryX[0],PointHistoryY[0]),1,random.choice([red,green,blue]),2)
-                    print("Current Point : " + str(xForScan) + ", " + str(yForScan))
+                    #----------- Scanning
+                    if (image[yForScan,xForScan][0] < InkThreshold) and (image[yForScan,xForScan][1] < InkThreshold) and (image[yForScan,xForScan][2] < InkThreshold):
+                        print("Low inkThreshold found")
+                    
+                        #Question Number : int(y/dy)
+                        #Option Number : int(x/dx)+1
+
+                        cv2.circle(image,(xForScan,yForScan),1,yellow,2)
+
+                        if optionTicked[len(optionTicked)-1] == 0:
+                            optionTicked[len(optionTicked)-1] += option+1
+                        else :
+                            optionTicked[len(optionTicked)-1] += 69
+
+                    else:
+                        cv2.circle(image,(xForScan,yForScan),1,blue,2)
 
                     #Keeping Data Short
                     PointHistoryX.insert(0,x)
@@ -151,7 +177,7 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
         except Exception as e:
             print(e)
         
-        return image
+        return image, optionTicked
 
     else:
         print("Invalid Method Provided.")
