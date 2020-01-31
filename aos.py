@@ -6,6 +6,7 @@ red = [10,10,255]
 blue = [255,10,10]
 green = [10,255,10]
 yellow = [0,255,255]
+purple = [255,10,255]
 answerKeyTextFile = 0
 
 def mapp(h):
@@ -108,7 +109,7 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
             
             optionTicked.append(0)
             currentOption = 1
-            
+
             for x in range(fx,fx+(dx*totalOptions),dx):
                 
                 if (image[y,x][0] < InkThreshold) and (image[y,x][1] < InkThreshold) and (image[y,x][2] < InkThreshold):
@@ -125,11 +126,9 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
                         optionTicked[len(optionTicked)-1] += 69
 
                 else:
-                    cv2.circle(image,(x,y),int(dx*0.1),blue,int(dx*0.15))
+                    cv2.circle(image,(x,y),int(dx*0.1),purple,int(dx*0.15))
                 
                 currentOption += 1
-
-                
         
         image = cv2.resize(image,(actualSize[0],actualSize[1]))
         return image, optionTicked
@@ -169,7 +168,7 @@ def scanOmr(image,actualSize = [],init = [],diff = [],resize = [],totalMCQs = 10
                             optionTicked[len(optionTicked)-1] += 69
 
                     else:
-                        cv2.circle(image,(xForScan,yForScan),1,blue,2)
+                        cv2.circle(image,(xForScan,yForScan),1,purple,2)
 
                     #Keeping Data Short
                     PointHistoryX.insert(0,x)
