@@ -9,7 +9,7 @@ To use aos first you need to create preset for specific type of OMR sheet
 - **If your OMR is not showing up in the "Detected OMR" panel, try tweaking the Edge Detection Settings. Make sure you hit apply to see and apply changes as shown below :**
 \
 ![Edge Detection Settings](/images/edgeDetectionSettings.gif)
-\
+
 ### 1.1 Add A Batch
 ![Add A Batch](/images/addBatch.png)\
 **Batches are basically a way to tell the software where the MCQ is.**\
