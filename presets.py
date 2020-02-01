@@ -42,11 +42,8 @@ Final Saving Syntax :
     note : Final saving will not have space around '$'. This is just for decoration.
 '''
 
-def watchTutorial():
-    webbrowser.open_new('http://bit.ly/aosTutorial')
-
 def openDocumentation():
-    webbrowser.open_new('http://bit.ly/aosDocuments')
+    webbrowser.open_new('https://github.com/AeroAndZero/OMRScanner')
 
 def filename(fp):
     fn = fp.split('/')
@@ -137,6 +134,7 @@ def usePreset(presetIndex):
     methodWindow = tk.Tk()
     methodWindow.title("Choose Method")
     methodWindow.geometry("300x100")
+    methodWindow.iconbitmap(os.getcwd()+'\\aosIcon.ico')
     methodWindow.focus_force()
 
     methodWindow.grid_rowconfigure(0,weight=1)
@@ -208,13 +206,13 @@ def main():
     root = tk.Tk()
     root.title("Presets - AOS v1.0")
     root.geometry("900x500+100+100")
+    root.iconbitmap(os.getcwd()+'\\aosIcon.ico')
     root.focus_force()
 
     '''-------------------- Menu bars --------------------'''
     menubar = tk.Menu(root)
     #file menu
     filemenu = tk.Menu(menubar,tearoff=0)
-    filemenu.add_command(label="Watch Tutorial",command=watchTutorial)
     filemenu.add_command(label="Open Documentation",command=openDocumentation)
     menubar.add_cascade(label="Help",menu=filemenu)
     root.config(menu=menubar)
