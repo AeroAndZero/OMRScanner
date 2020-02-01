@@ -31,7 +31,7 @@ To use aos first you need to create preset for specific type of OMR sheet
 ![Batch 2 Picking](/images/batch2Picking.gif)
 #### {!} Make Sure the number of batches is in order with the order of the mcqs. Scanner will go through Batch 1 and then batch 2 and so on.. So make sure your batches are in ascending order
 ### 1.2 Save The Preset
-- Make sure you save the preset in order to use it. To save a preset got to Preset Menu -> Save Preset Then enter name and description.\
+- Make sure you save the preset in order to use it. To save a preset got to Preset Menu -> Save Preset Then enter name and description.
 
 ### 2. Use Preset To Scan OMR
 Now that you have made presets you can use them to scan the same type of OMR sheet. Press on **Use** button to use the preset.
