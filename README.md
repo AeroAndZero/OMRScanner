@@ -32,7 +32,7 @@ To use aos first you need to create preset for specific type of OMR sheet
 #### {!} Make Sure the number of batches is in order with the order of the mcqs. Scanner will go through Batch 1 and then batch 2 and so on.. So make sure your batches are in ascending order
 ### 1.2 Save The Preset
 - Make sure you save the preset in order to use it. To save a preset got to Preset Menu -> Save Preset Then enter name and description.\
-\
+
 ### 2. Use Preset To Scan OMR
 Now that you have made presets you can use them to scan the same type of OMR sheet. Press on **Use** button to use the preset.
 - When you click on Use Button you will be provided with a window for choosing the scanning method.
@@ -45,7 +45,7 @@ Now that you have made presets you can use them to scan the same type of OMR she
   - Yellow Circle : Shows the ticked MCQ option.
   - Purple circle : Shows Where the scanning has been through.
   
-- Add Answer Key For Result Calculation by Click on **Open Answer Key** button. Hit re-scan when you add an Answer key.
+- Add Answer Key For Result Calculation by Click on **Open Answer Key** button. Hit re-scan when you add an Answer key.\
 ![Attaching Answer Key](/images/attachingAnswerkey.gif)
 
 ### 2.1 Creating Answer Key
@@ -58,3 +58,15 @@ For creating answer key don't use option name like 'a','b','c' etc. but Use answ
 \
 ![Reference Answer Key](/images/refAnswerKey.png)
 #### InkThreshold : Its stands for how dark the ink of the pen is. If student's pen Ink is too bright and aos cannot detect circles, Try increasing the Ink Threshold value. (Make sure you hit Re-scan to see changes.)
+
+
+## About Code
+***Created in Python 2.7***
+### Dependencies
+- Tkinter
+- OpenCV
+- os
+- shutil
+- Pillow
+
+I am not a professional coder and this was my first "Big" project. Good luck understanding it :)
