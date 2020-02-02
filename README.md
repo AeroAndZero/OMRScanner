@@ -68,5 +68,6 @@ For creating answer key don't use option name like 'a','b','c' etc. but Use answ
 - os
 - shutil
 - Pillow
+- numpy
 
 I am not a professional coder and this was my first "Big" project. Good luck understanding it :)
